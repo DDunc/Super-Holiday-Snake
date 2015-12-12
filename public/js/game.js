@@ -4,11 +4,12 @@ var game = new Phaser.Game(800, 600, Phaser.AUTO, '', { preload: preload, create
 
 function preload () {
   game.load.image('ball','assets/shinyball.png');
-  game.load.image('earth', 'assets/light_sand.png');
+  game.load.image('earth', 'assets/ice.png');
   game.load.image('apple', 'assets/apple.png');
   game.load.image('snakehead', 'assets/snakehead.png');
   game.load.spritesheet('dude', 'assets/dude.png', 64, 64);
   game.load.spritesheet('enemy', 'assets/dude.png', 64, 64);
+  game.load.audio('scream', 'assets/scream.mp3');
 }
 
 var socket // Socket connection;
@@ -26,27 +27,41 @@ var cursors;
 var snakeHead; //head of snake sprite
 var snakeSection = new Array(); //array of sprites that make the snake body sections
 var snakePath = new Array(); //arrary of positions(points) that have to be stored for the path the sections follow
-var numSnakeSections = 30; //number of snake body sections
-var snakeSpacer = 6; //parameter that sets the spacing between sections
+var numSnakeSections = 5; //number of snake body sections
+var snakeSpacer = 1; //parameter that sets the spacing between sections
 
 
 function randomizedStart(){
     return Math.round(Math.random() * (1000) - 500);
 }
 
+function playerInit(){
+  player = game.add.sprite(randomizedStart(), randomizedStart(), 'dude');
+  game.physics.arcade.enable(player);
+  player.anchor.setTo(0.5, 0.5);
+  player.animations.add('move', [0, 1, 2, 3, 4, 5, 6, 7], 20, true);
+  player.animations.add('stop', [3], 20, true);
+  //player.body.velocity.setTo(100,100);
+  //player.body.bounce.set(1, 1);
+  // This will force it to decelerate and limit its speed
+  //player.body.drag.setTo(200, 200);
+  player.body.maxVelocity.setTo(500, 500);
+  player.body.collideWorldBounds = true;
+  player.bringToTop();
+}
+
 function create () {
    game.physics.startSystem(Phaser.Physics.ARCADE);
- 
-  socket = io.connect();
 
+  socket = io.connect();
   // Resize our game world to be a 2000 x 2000 square
   game.world.setBounds(-500, -500, 1000, 1000);
 
   // Our tiled scrolling background
   land = game.add.tileSprite(0, 0, 800, 600, 'earth');
   land.fixedToCamera = true;
-
-
+  scream = game.add.audio('scream');
+  playerInit();
   snakeHead = game.add.sprite(400, 300, 'ball');
   snakeHead.anchor.setTo(0.5, 0.5);
   game.physics.enable(snakeHead, Phaser.Physics.ARCADE);
@@ -56,7 +71,6 @@ function create () {
       snakeSection[i] = game.add.sprite(400, 300, 'ball');
       snakeSection[i].anchor.setTo(0.5, 0.5);
   }
-  
   //  Init snakePath array
   for (var i = 0; i <= numSnakeSections * snakeSpacer; i++)
   {
@@ -64,31 +78,24 @@ function create () {
   }
 
   // The base of our player
-  var startX = Math.round(Math.random() * (1000) - 500);
-  var startY = Math.round(Math.random() * (1000) - 500);
-  player = game.add.sprite(startX, startY, 'dude');
+  //var startX = Math.round(Math.random() * (1000) - 500);
+  //var startY = Math.round(Math.random() * (1000) - 500);
+  //player = game.add.sprite(startX, startY, 'dude');
   apple = game.add.sprite(randomizedStart(), randomizedStart(), 'apple');
   snake = game.add.sprite(randomizedStart(), randomizedStart(), 'snakehead');
-  game.physics.arcade.enable(player);
+  //game.physics.arcade.enable(player);
   game.physics.arcade.enable(snake);
-  player.anchor.setTo(0.5, 0.5);
-  player.animations.add('move', [0, 1, 2, 3, 4, 5, 6, 7], 20, true);
-  player.animations.add('stop', [3], 20, true);
+  game.physics.arcade.enable(snakeHead);
 
   // This will force it to decelerate and limit its speed
-  player.body.drag.setTo(200, 200);
-  player.body.maxVelocity.setTo(400, 400);
-  player.body.collideWorldBounds = true;
+  //player.body.drag.setTo(200, 200);
   snake.body.collideWorldBounds = true;
+  snakeHead.body.collideWorldBounds = true;
   // Create some baddies to waste :)
   enemies = [];
-
-  player.bringToTop();
-
   game.camera.follow(player);
   game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
   game.camera.focusOnXY(0, 0);
-
   //cursors = game.input.keyboard.createCursorKeys()
   //key direction implementation
   keys = game.input.keyboard.createCursorKeys();
@@ -179,17 +186,23 @@ function onRemovePlayer (data) {
 }
 
 function update () {
+
+  game.physics.arcade.collide(player, snake);
+
   snake.body.x += .1;
   game.physics.arcade.collide(snake, player);
-  game.physics.arcade.overlap(snakeHead, player, collisionHandler, null, this);
   for (var i = 0; i < enemies.length; i++) {
     if (enemies[i].alive) {
       enemies[i].update()
       game.physics.arcade.collide(player, enemies[i].player)
     }
   }
-   if (keys.left.isDown) {
+   if (keys.left.isDown && currentSpeed < 250) {
     player.angle -= 5
+    if (currentSpeed > 0){
+      currentSpeed = currentSpeed - 10;
+    }
+
   }
 
   /* else if (keys.right.isDown) {
@@ -203,10 +216,11 @@ function update () {
   } */
 
   if (keys.up.isDown)  {
-    currentSpeed = 200
+    currentSpeed = currentSpeed + 5;
+    player.body.velocity.setTo(player.body.velocity + 100);
   } else {
     if (currentSpeed > 0) {
-      currentSpeed -= 100;
+      currentSpeed -=  10;
     }
   }
 
@@ -239,20 +253,21 @@ function update () {
 
         // Everytime the snake head moves, insert the new location at the start of the array, 
         // and knock the last position off the end
-
+       game.physics.arcade.overlap(snakeHead, player, collisionHandler, null, this);
         var part = snakePath.pop();
-
         part.setTo(snakeHead.x, snakeHead.y);
-
         snakePath.unshift(part);
 
-        for (var i = 1; i <= numSnakeSections - 1; i++)
-        { 
-            snakeSection[i].x = (snakePath[i * snakeSpacer]).x;
-            snakeSection[i].y = (snakePath[i * snakeSpacer]).y;
+         for (var j = 1; j < numSnakeSections; j++) {
+          //console.log((snakePath[j * snakeSpacer]).x);
+          //console.log(snakePath);
+          console.log("j times snakespacer", j * snakeSpacer);
+            snakeSection[j].x = (snakePath[j * snakeSpacer]).x;
+            snakeSection[j].y = (snakePath[j * snakeSpacer]).y;
         }
     }
-
+    j = 1;
+     //game.physics.arcade.overlap(snakeHead, player, collisionHandler, null, this);
     if (keys.left.isDown)
     {
         snakeHead.body.angularVelocity = -300;
@@ -280,21 +295,29 @@ function playerById (id) {
   return false
 }
 
-function collisionHandler (snake, player) {
+function playerCollider (enemy, player) {
 
-    //  When a snake hits an player we kill them both
-    //snake.kill();
-    player.kill();
+}
+function collisionHandler (snake, deadplayer) {
+  console.log("player killed!");
+    scream.play();
+    deadplayer.kill();
     numSnakeSections++;
+    console.log(snakeSection);
+    console.log(snakePath.length)
+    debugger;
+    snakePath.push(new Phaser.Point(400, 300));
+    console.log(snakePath.length)
+    snakeSection.push(game.add.sprite(400, 300, 'ball'));
+    snakeSection[(numSnakeSections - 1)].anchor.setTo(0.5, 0.5);
+    playerInit();
     //  Increase the score
     //score += 20;
     //scoreText.text = scoreString + score;
-
     //  And create an explosion :)
     //var explosion = explosions.getFirstExists(false);
     //explosion.reset(player.body.x, player.body.y);
     //explosion.play('kaboom', 30, false, true);
-
     /*if (players.countLiving() == 0)
     {
         score += 1000;
