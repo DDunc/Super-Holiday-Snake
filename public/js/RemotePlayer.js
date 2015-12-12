@@ -8,9 +8,11 @@ var RemotePlayer = function (index, game, player, startX, startY) {
   this.health = 3
   this.player = player
   this.alive = true
+  game.physics.startSystem(Phaser.Physics.ARCADE);
+
 
   this.player = game.add.sprite(x, y, 'enemy')
-
+  game.physics.arcade.enable(this.player);
   this.player.animations.add('move', [0, 1, 2, 3, 4, 5, 6, 7], 20, true)
   this.player.animations.add('stop', [3], 20, true)
 
@@ -28,7 +30,7 @@ var RemotePlayer = function (index, game, player, startX, startY) {
 RemotePlayer.prototype.update = function () {
   if (this.player.x !== this.lastPosition.x || this.player.y !== this.lastPosition.y) {
     this.player.play('move')
-    this.player.rotation = Math.PI + game.physics.angleToXY(this.player, this.lastPosition.x, this.lastPosition.y)
+    this.player.rotation = Math.PI + game.physics.arcade.angleToXY(this.player, this.lastPosition.x, this.lastPosition.y)
   } else {
     this.player.play('stop')
   }
