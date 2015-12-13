@@ -13,38 +13,41 @@ function preload () {
   game.load.image('ball','assets/shiny.png');
   game.load.image('earth', 'assets/ice.png');
   game.load.image('apple', 'assets/apple.png');
-  game.load.image('snakehead', 'assets/snakehead.png');
   game.load.spritesheet('dude', 'assets/dude.png', 64, 64);
-  game.load.spritesheet('enemy', 'assets/dude2.png', 64, 64);
+  game.load.spritesheet('enemy', 'assets/dude.png', 64, 64);
   game.load.audio('scream', 'assets/scream.mp3');
   game.load.image('snowman', 'assets/snowman.png');
   game.load.spritesheet('dude2', 'assets/dude2.png', 64, 64)
 }
 
 var socket; // Socket connection;
-
 var land;
-
 var player;
 var player2;
-
 var enemies;
+// //var snakeOpts = {
+//   goToPlayer: function (){game.physics.arcade.moveToObject(snakeHead, player, 200)},
+//   goToObstacle: function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300)},
+//   goRight: function(){snakeHead.body.angularVelocity = 300},
+//   goLeft: function(){snakeHead.body.angularVelocity = -300},
+//   goToPlayerFast: function (){game.physics.arcade.moveToObject(snakeHead, player, 350)},
+//   goToPlayerSlow: function (){game.physics.arcade.moveToObject(snakeHead, player, 150)},
+//   currentOpt: function(){game.physics.arcade.moveToObject(snakeHead, player, 150)}
+// //}
 
-var snakeOpts = {
-  goToPlayer: function (){game.physics.arcade.moveToObject(snakeHead, player, 200)},
-  goToObstacle: function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300)},
-  goRight: function(){snakeHead.body.angularVelocity = 300},
-  goLeft: function(){snakeHead.body.angularVelocity = -300},
-  goToPlayerFast: function (){game.physics.arcade.moveToObject(snakeHead, player, 350)},
-  goToPlayerSlow: function (){game.physics.arcade.moveToObject(snakeHead, player, 150)},
-  currentOpt: function(){game.physics.arcade.moveToObject(snakeHead, player, 150)}
-}
-
+var snakeOpts = [
+  function (){game.physics.arcade.moveToObject(snakeHead, player, 200)},
+  function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300)},
+  function(){snakeHead.body.angularVelocity = 300},
+  function(){snakeHead.body.angularVelocity = -300},
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 350)},
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 150)},
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 150)}
+]
 
 var currentSpeed = 0;
 var cursors;
-
-var snakeCountdown = 10;
+var snakeCountdown = 100;
 
 //snake stuff
 var snakeHead; //head of snake sprite
@@ -52,7 +55,6 @@ var snakeSection = []; //array of sprites that make the snake body sections
 var snakePath = []; //arrary of positions(points) that have to be stored for the path the sections follow
 var numSnakeSections = 10; //number of snake body sections
 var snakeSpacer = 5; //parameter that sets the spacing between sections
-
 var snowman;
 
 function randomizedStart(){
@@ -74,6 +76,7 @@ function playerInit() {
   player.body.maxVelocity.setTo(300, 300);
   player.body.collideWorldBounds = true;
   player.bringToTop();
+  curentSpeed = 0;
   game.camera.follow(player);
 }
 
@@ -182,12 +185,17 @@ var setEventHandlers = function () {
   // Player move message received
   socket.on('move player', onMovePlayer);
 
-  socket.on('move snake', onMoveSnake)
+  socket.on('snake decided', snakeHeading);
+
   // Player removed message received
   socket.on('remove player', onRemovePlayer);
 };
 
 // Socket connected
+
+function onAskSnake() {
+  socket.emit('snake asked', "wut")
+}
 function onSocketConnected () {
   console.log('Connected to socket server');
 
@@ -223,6 +231,19 @@ function onMovePlayer (data) {
   movePlayer.player.y = data.y;
 }
 
+function snakeHeading(data){
+  var curData = data.data || 5
+  console.log(curData);
+  //snakeCountdown--;
+  //if(snakeCountdown === 0){
+    //snakeCountdown = 10;
+    //console.log(curData)
+    snakeOpts[snakeOpts.length-1] = snakeOpts[curData];
+  //}
+  snakeOpts[snakeOpts.length-1]();
+}
+
+
 function onMoveSnake (data) {
   console.log(data)
   // Update player position
@@ -248,6 +269,11 @@ function onRemovePlayer (data) {
 }
 
 function update () {
+  snakeCountdown--;
+  if(snakeCountdown === 1){
+      onAskSnake()
+      snakeCountdown = 100;
+  }
   game.physics.arcade.collide(player, snowman);
   game.physics.arcade.collide(snakeHead, snowman);
   //snake.body.x += .1;
@@ -283,10 +309,8 @@ function update () {
       player.body.velocity.setTo(player.body.velocity.x -1, player.body.velocity.y - 1);
     }
   }
- //game.physics.arcade.velocityFromRotation(player.rotation, currentSpeed, player.body.velocity)
   if (currentSpeed > 0) {
     game.physics.arcade.velocityFromRotation(player.rotation, currentSpeed, player.body.velocity);
-
     player.animations.play('move');
   } else {
     player.animations.play('stop');
@@ -294,53 +318,23 @@ function update () {
 
   land.tilePosition.x = -game.camera.x;
   land.tilePosition.y = -game.camera.y;
-
-  /* if (game.input.activePointer.isDown) {
-    if (game.physics.distanceToPointer(player) >= 10) {
-      currentSpeed = 300
-
-      player.rotation = game.physics.angleToPointer(player)
-    }
-  } */
-
   socket.emit('move player', { x: player.x, y: player.y });
+  //snakeOpts[snakeOpts.length-1]();
   snakeHead.body.velocity.setTo(0, 0);
-    snakeHead.body.angularVelocity = 0;
-    //if (keys.up.isDown)
-
-    //{
-        snakeHead.body.velocity.copyFrom(game.physics.arcade.velocityFromAngle(snakeHead.angle, 300));
-
-        // Everytime the snake head moves, insert the new location at the start of the array,
-        // and knock the last position off the end
-       game.physics.arcade.overlap(snakeHead, player, collisionHandler, null, this);
-       game.physics.arcade.overlap(snakeHead, player2, collisionHandler, null, this);
-        var part = snakePath.pop();
-        part.setTo(snakeHead.x, snakeHead.y);
-        snakePath.unshift(part);
-
-         for (var j = 1; j < numSnakeSections; j++) {
-          //console.log((snakePath[j * snakeSpacer]).x);
-          //console.log(snakePath);
-            snakeSection[j].x = (snakePath[j * snakeSpacer]).x;
-            snakeSection[j].y = (snakePath[j * snakeSpacer]).y;
-        }
-    //}
-     game.physics.arcade.overlap(snakeHead, player, collisionHandler, null, this);
-     snakeHeading()
-
-    //if (keys.left.isDown)
-   //{
-        //snakeHead.body.angularVelocity = Math.random() * (-100);
-    //}
-    //else if (keys.right.isDown)
-    //{
-        //snakeHead.body.angularVelocity = 300;
-    //}
-    //what passes for AI
+  snakeHead.body.angularVelocity = 0;
+  snakeHead.body.velocity.copyFrom(game.physics.arcade.velocityFromAngle(snakeHead.angle, 300));
+  var part = snakePath.pop();
+  part.setTo(snakeHead.x, snakeHead.y);
+  snakePath.unshift(part);
+  for (var j = 1; j < numSnakeSections; j++) {
+    snakeSection[j].x = (snakePath[j * snakeSpacer]).x;
+    snakeSection[j].y = (snakePath[j * snakeSpacer]).y;
+  }
+  game.physics.arcade.collide(snakeHead, player, collisionHandler, null, this);
+     
+     snakeOpts[snakeOpts.length-1]()//snakeHeading()
 }
 
-//will need to put socket.emit('move player', { x: player.x, y: player.y })
 function render () {
  game.debug.spriteInfo(player, 32, 32);
 }
@@ -355,21 +349,6 @@ function playerById (id) {
 
   return false;
 }
-
-/* function playerCollider (player, enemy) {
-     if (player.body.touching.up === true) {
-      player.body.y -= 20;
-   }
-        if (player.body.touching.down === true) {
-      player.body.y += 20;
-   }
-    if (player.body.touching.right === true) {
-      player.body.x -= 20;
-   }
-    if (player.body.touching.left === true) {
-      player.body.x += 20;
-   }
-} */
 
 function collisionHandler (snake, deadplayer) {
   console.log("player killed!");
@@ -389,19 +368,7 @@ function collisionHandler (snake, deadplayer) {
   }
 }
 
-    function snakeHeading(){
-      snakeCountdown--;
-      if(snakeCountdown === 0){
-        snakeCountdown = 20;
-        console.log(snakeOpts)
-        snakeOpts.currentOpt = snakeOpts[Object.keys(snakeOpts)[randomizer(0, Object.keys(snakeOpts).length-1)]];
-      }
-      console.log(snakeOpts.currentOpt)
-       socket.emit('move snake', { x: snakeHead.x, y: snakeHead.y });
-       console.log("snakehead x and y", snakeHead.x, snakeHead.y);
-      snakeOpts.currentOpt()
-      //debugger;
-    }
+
     //  Increase the score
     //score += 20;
     //scoreText.text = scoreString + score;
