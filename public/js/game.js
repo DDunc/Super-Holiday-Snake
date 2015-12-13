@@ -15,7 +15,7 @@ function preload () {
   game.load.image('apple', 'assets/apple.png');
   game.load.image('snakehead', 'assets/snakehead.png');
   game.load.spritesheet('dude', 'assets/dude.png', 64, 64);
-  game.load.spritesheet('enemy', 'assets/dude.png', 64, 64);
+  game.load.spritesheet('enemy', 'assets/dude2.png', 64, 64);
   game.load.audio('scream', 'assets/scream.mp3');
   game.load.image('snowman', 'assets/snowman.png');
   game.load.spritesheet('dude2', 'assets/dude2.png', 64, 64)
@@ -69,7 +69,7 @@ function playerInit() {
   player.body.bounce.setTo(0.8, 0.8);
   // This will force it to decelerate and limit its speed
   //player.body.drag.setTo(200, 200);
-  player.body.maxVelocity.setTo(500, 500);
+  player.body.maxVelocity.setTo(300, 300);
   player.body.collideWorldBounds = true;
   player.bringToTop();
 }
@@ -83,7 +83,7 @@ function player2Init() {
   player2.body.bounce.setTo(0.8, 0.8);
   // This will force it to decelerate and limit its speed
   //player.body.drag.setTo(200, 200);
-  player2.body.maxVelocity.setTo(500, 500);
+  player2.body.maxVelocity.setTo(300, 300);
   player2.body.collideWorldBounds = true;
 }
 
@@ -116,7 +116,7 @@ function create () {
 
   socket = io.connect();
   // Resize our game world to be a 2000 x 2000 square
-  game.world.setBounds(-500, -500, 1000, 1000);
+  //game.world.setBounds(-500, -500, 1000, 1000);
 
   // Our tiled scrolling background
   land = game.add.tileSprite(0, 0, 800, 600, 'earth');
