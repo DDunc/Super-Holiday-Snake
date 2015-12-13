@@ -1,14 +1,14 @@
 {
-  "name": "phaser-multiplayer-game",
+  "name": "Super Holiday Snake",
   "version": "1.0.0",
-  "description": "Phaser example gone multiplayer!",
+  "description": "A Snake For Every Holiday",
   "main": "lib/game.js",
   "scripts": {
     "start": "node .",
     "dev": "nodemon .",
     "lint": "standard --verbose | snazzy"
   },
-  "author": "Francisco Dias",
+  "author": "Duncan",
   "license": "MIT",
   "dependencies": {
     "ecstatic": "^1.0.1",

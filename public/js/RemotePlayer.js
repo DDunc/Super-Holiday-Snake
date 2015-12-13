@@ -19,7 +19,7 @@ var RemotePlayer = function (index, game, player, startX, startY) {
   this.player.anchor.setTo(0.5, 0.5)
 
   this.player.name = index.toString()
-  this.player.body.immovable = true
+  //this.player.body.immovable = true
   this.player.body.collideWorldBounds = true
 
   this.player.angle = game.rnd.angle()
@@ -34,7 +34,6 @@ RemotePlayer.prototype.update = function () {
   } else {
     this.player.play('stop')
   }
-
   this.lastPosition.x = this.player.x
   this.lastPosition.y = this.player.y
 }
