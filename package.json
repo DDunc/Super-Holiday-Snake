@@ -1,5 +1,5 @@
 {
-  "name": "Super Holiday Snake",
+  "name": "superholidaysnake",
   "version": "1.0.0",
   "description": "A Snake For Every Holiday",
   "main": "lib/game.js",

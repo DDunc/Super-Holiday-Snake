@@ -143,7 +143,7 @@ function create () {
   //snakeHead.body.collideWorldBounds = true;
   // Create some baddies to waste :)
   enemies = [];
-  game.camera.follow(snakeHead);
+  game.camera.follow(player);
   game.camera.deadzone = new Phaser.Rectangle(150, 150, 500, 300);
   game.camera.focusOnXY(0, 0);
   //cursors = game.input.keyboard.createCursorKeys()
