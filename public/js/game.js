@@ -16,6 +16,8 @@ function preload () {
   game.load.spritesheet('dude', 'assets/dude.png', 64, 64);
   game.load.spritesheet('enemy', 'assets/dude.png', 64, 64);
   game.load.audio('scream', 'assets/scream.mp3');
+  game.load.audio('pointred', 'assets/pointred.mp3');
+  game.load.audio('pointgreen', 'assets/pointgreen.mp3');
   game.load.image('snowman', 'assets/snowman.png');
   game.load.spritesheet('dude2', 'assets/dude2.png', 64, 64)
 }
@@ -25,6 +27,13 @@ var land;
 var player;
 var player2;
 var enemies;
+
+var scoreTextRed;
+var scoreTextGreen;
+var redScore = 0;
+var greenScore = 0;
+var pointgreen;
+var pointred;
 // //var snakeOpts = {
 //   goToPlayer: function (){game.physics.arcade.moveToObject(snakeHead, player, 200)},
 //   goToObstacle: function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300)},
@@ -43,7 +52,7 @@ var snakeOpts = [
   function(){game.physics.arcade.moveToObject(snakeHead, player, 350)},
   function(){game.physics.arcade.moveToObject(snakeHead, player, 150)},
   function(){game.physics.arcade.moveToObject(snakeHead, player, 150)}
-]
+];
 
 var currentSpeed = 0;
 var cursors;
@@ -66,6 +75,7 @@ function randomizedStart(){
 
 function playerInit() {
   player = game.add.sprite(randomizer(100, 700), randomizer(100, 1500), 'dude');
+  player.team = "red";
   game.physics.arcade.enable(player);
   player.anchor.setTo(0.5, 0.5);
   player.animations.add('move', [0, 1, 2, 3, 4, 5, 6, 7], 20, true);
@@ -94,7 +104,7 @@ function player2Init() {
 }
 
 function snakeInit() {
-  snakeHead = game.add.sprite(400, 300, 'ball');
+  snakeHead = game.add.sprite(300, 300, 'ball');
   snakeHead.anchor.setTo(0.5, 0.5);
   game.physics.arcade.enable(snakeHead);
   for (var i = 1; i <= numSnakeSections-1; i++) {
@@ -122,12 +132,13 @@ function create () {
 
   socket = io.connect();
   // Resize our game world to be a 2000 x 2000 square
-  game.world.setBounds(-500, -500, 800, 2000);
-
+  game.world.setBounds(-500, -500, 1500, 1500);
   // Our tiled scrolling background
   land = game.add.tileSprite(0, 0, 800, 600, 'earth');
   land.fixedToCamera = true;
   scream = game.add.audio('scream');
+  pointgreen = game.add.audio('pointgreen');
+  pointred = game.add.audio('pointred');
   playerInit();
   //  Init snakeSection array
   snakeInit();
@@ -137,11 +148,6 @@ function create () {
   //var startX = Math.round(Math.random() * (1000) - 500);
   //var startY = Math.round(Math.random() * (1000) - 500);
   //player = game.add.sprite(startX, startY, 'dude');
- // apple = game.add.sprite(randomizedStart(), randomizedStart(), 'apple');
- //snowMan1 = game.add.sprite(randomizedStart(), randomizedStart(), 'snakehead');
-  //game.physics.arcade.enable(player);
-  //game.physics.arcade.enable(snake);
-  //game.physics.arcade.enable(snakeHead);
 
   // This will force it to decelerate and limit its speed
   //player.body.drag.setTo(200, 200);
@@ -168,7 +174,12 @@ function create () {
       this.ball.body.velocity.y += this.movementForce;
   } */
   // Start listening for events
-
+  scoreTextGreen = game.add.text(8, 8, 'Green: 0', { fontSize: '24px', fill: '#3C8D0D' });
+  scoreTextRed = game.add.text(8, 32, 'Red: 0', { fontSize: '24px', fill: '#D11111' });
+  scoreTextRed.fixedToCamera = true;
+  scoreTextGreen.fixedToCamera = true;
+  scoreTextGreen.bringToTop();
+  scoreTextRed.bringToTop();
   setEventHandlers();
 }
 
@@ -189,12 +200,24 @@ var setEventHandlers = function () {
 
   // Player removed message received
   socket.on('remove player', onRemovePlayer);
+  socket.on('score update', onScoreUpdate);
 };
 
 // Socket connected
 
 function onAskSnake() {
   socket.emit('snake asked', "wut")
+}
+
+function onScoreUpdate(data) {
+  console.log("player killed!");
+  console.log(data);
+  redScore = data.data.red;
+  greenScore = data.data.green;
+  console.log('redScoreeee', redScore)
+  scoreTextRed.text = 'Red: ' + redScore;
+  scoreTextGreen.text = 'Green: ' + greenScore;
+  //scream.play();
 }
 function onSocketConnected () {
   console.log('Connected to socket server');
@@ -336,7 +359,7 @@ function update () {
 }
 
 function render () {
- game.debug.spriteInfo(player, 32, 32);
+ //game.debug.spriteInfo(player, 32, 32);
 }
 
 // Find player by ID
@@ -351,22 +374,30 @@ function playerById (id) {
 }
 
 function collisionHandler (snake, deadplayer) {
-  console.log("player killed!");
-  scream.play();
+  var pointsTo = deadplayer.team
+  console.log(pointsTo);
+  if (pointsTo === "red"){
+    pointred.play()
+  }
+  if(pointsTo === "green") {
+    pointgreen.play()
+  }
+
   deadplayer.kill();
   numSnakeSections++;
-  console.log(snakeSection);
-  console.log(snakePath.length);
+  //console.log(snakeSection);
+  //console.log(snakePath.length);
   //debugger;
   //snakePath.push(new Phaser.Point(400, 300));
-  console.log(snakePath.length);
   snakeSection.push(game.add.sprite(400, 300, 'ball'));
   snakeSection[(numSnakeSections - 1)].anchor.setTo(0.5, 0.5);
-  playerInit();
   for (var q = 0; q <= numSnakeSections * snakeSpacer; q++) {
     snakePath[q] = snakePath[q] || new Phaser.Point(400, 300);
-  }
+  }//these teams are the team that gets points, remember
+  socket.emit('player killed', {playerTeam: pointsTo})
+  playerInit();
 }
+
 
 
     //  Increase the score
