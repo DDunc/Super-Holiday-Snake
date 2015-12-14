@@ -10,7 +10,7 @@ var randomizer = function (min, max) {
 
 
 function preload () {
-  game.load.image('ball','assets/shiny.png');
+  game.load.image('ball','assets/snake_body.png');
   game.load.image('earth', 'assets/ice.png');
   game.load.image('apple', 'assets/apple.png');
   game.load.spritesheet('dude', 'assets/dude.png', 64, 64);
@@ -20,6 +20,7 @@ function preload () {
   game.load.audio('pointgreen', 'assets/pointgreen.mp3');
   game.load.image('snowman', 'assets/snowman.png');
   game.load.spritesheet('dude2', 'assets/dude2.png', 64, 64)
+  game.load.image('snakehat', 'assets/snake_head.png');
 }
 
 var socket; // Socket connection;
@@ -45,13 +46,28 @@ var pointred;
 // //}
 
 var snakeOpts = [
-  function (){game.physics.arcade.moveToObject(snakeHead, player, 200)},
-  function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300)},
-  function(){snakeHead.body.angularVelocity = 300},
-  function(){snakeHead.body.angularVelocity = -300},
-  function(){game.physics.arcade.moveToObject(snakeHead, player, 350)},
-  function(){game.physics.arcade.moveToObject(snakeHead, player, 150)},
-  function(){game.physics.arcade.moveToObject(snakeHead, player, 150)}
+  function (){game.physics.arcade.moveToObject(snakeHead, player, 250);
+    snakeHead.rotation = game.physics.arcade.angleBetween(snakeHead, player)
+    snakeSection.forEach(function(item){
+      item.rotation = game.physics.arcade.angleBetween(snakeHead, player)
+    })
+    ;},
+  function(){game.physics.arcade.moveToObject(snakeHead, snowman, 300);
+    snakeHead.rotation = game.physics.arcade.angleBetween(snakeHead, snowman) * 0.9
+    
+    ;},
+  function(){snakeHead.body.angularVelocity = 250},
+  function(){snakeHead.body.angularVelocity = -250},
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 350);
+    snakeHead.rotation = game.physics.arcade.angleBetween(snakeHead, player) * 0.9
+    },
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 250);
+    snakeHead.rotation = game.physics.arcade.angleBetween(snakeHead, player) * 0.9
+    ;},
+  function(){game.physics.arcade.moveToObject(snakeHead, player, 250);
+    snakeHead.rotation = game.physics.arcade.angleBetween(snakeHead, player) * 0.9
+    ;
+  }
 ];
 
 var currentSpeed = 0;
@@ -63,8 +79,9 @@ var snakeHead; //head of snake sprite
 var snakeSection = []; //array of sprites that make the snake body sections
 var snakePath = []; //arrary of positions(points) that have to be stored for the path the sections follow
 var numSnakeSections = 10; //number of snake body sections
-var snakeSpacer = 5; //parameter that sets the spacing between sections
+var snakeSpacer = 7; //parameter that sets the spacing between sections
 var snowman;
+var snakeHat;
 
 function randomizedStart(){
     return Math.round(Math.random() * (800) - 200);
@@ -104,19 +121,24 @@ function player2Init() {
 }
 
 function snakeInit() {
-  snakeHead = game.add.sprite(300, 300, 'ball');
+
+  snakeHead = game.add.sprite(400, 300, 'snakehat');
   snakeHead.anchor.setTo(0.5, 0.5);
   game.physics.arcade.enable(snakeHead);
+   //snakeHat = snakeSection[1] = game.add.sprite(300, 300, 'snakehat')
   for (var i = 1; i <= numSnakeSections-1; i++) {
     snakeSection[i] = game.add.sprite(400, 300, 'ball');
     snakeSection[i].anchor.setTo(0.5, 0.5);
+        //if (i < 4){
+      //snakeSection[i].anchor.setTo(0.3, 0.3);
+    //}
   }
-
   for (var k = 0; k <= numSnakeSections * snakeSpacer; k++) {
     snakePath[k] = new Phaser.Point(400, 300);
   }
 
   snakeHead.body.collideWorldBounds = true;
+  //snakeHead.bringToTop();
 }
 
 function obstacleInit(){
@@ -129,7 +151,6 @@ snowman.body.bounce.setTo(1, 1);
 
 function create () {
    game.physics.startSystem(Phaser.Physics.ARCADE);
-
   socket = io.connect();
   // Resize our game world to be a 2000 x 2000 square
   game.world.setBounds(-500, -500, 1500, 1500);
@@ -211,7 +232,6 @@ function onAskSnake() {
 
 function onScoreUpdate(data) {
   console.log("player killed!");
-  console.log(data);
   redScore = data.data.red;
   greenScore = data.data.green;
   console.log('redScoreeee', redScore)
@@ -256,7 +276,7 @@ function onMovePlayer (data) {
 
 function snakeHeading(data){
   var curData = data.data || 5
-  console.log(curData);
+  //console.log(curData);
   //snakeCountdown--;
   //if(snakeCountdown === 0){
     //snakeCountdown = 10;
@@ -343,23 +363,28 @@ function update () {
   land.tilePosition.y = -game.camera.y;
   socket.emit('move player', { x: player.x, y: player.y });
   //snakeOpts[snakeOpts.length-1]();
-  snakeHead.body.velocity.setTo(0, 0);
-  snakeHead.body.angularVelocity = 0;
+ // snakeHead.body.velocity.setTo(0, 0);
+  //snakeHead.body.angularVelocity = 0;
   snakeHead.body.velocity.copyFrom(game.physics.arcade.velocityFromAngle(snakeHead.angle, 300));
   var part = snakePath.pop();
   part.setTo(snakeHead.x, snakeHead.y);
+  //snakeHead.bringToTop();
   snakePath.unshift(part);
   for (var j = 1; j < numSnakeSections; j++) {
+    if(j === 1){
+      snakeSection[j].visible = false;
+    }
     snakeSection[j].x = (snakePath[j * snakeSpacer]).x;
     snakeSection[j].y = (snakePath[j * snakeSpacer]).y;
   }
-  game.physics.arcade.collide(snakeHead, player, collisionHandler, null, this);
-     
+  //snakeHead.bringToTop();
+    game.physics.arcade.collide(snakeHead, player, collisionHandler, null, this);
+
      snakeOpts[snakeOpts.length-1]()//snakeHeading()
 }
 
 function render () {
- //game.debug.spriteInfo(player, 32, 32);
+ game.debug.spriteInfo(snakeHead, 32, 32);
 }
 
 // Find player by ID
@@ -375,12 +400,11 @@ function playerById (id) {
 
 function collisionHandler (snake, deadplayer) {
   var pointsTo = deadplayer.team
-  console.log(pointsTo);
   if (pointsTo === "red"){
-    pointred.play()
+    //pointred.play()
   }
   if(pointsTo === "green") {
-    pointgreen.play()
+    //pointgreen.play()
   }
 
   deadplayer.kill();
